@@ -11,3 +11,33 @@ class StockData(BaseModel):
     volume: int
     dividend: float
     split: float
+
+
+class DailyStockData(StockData):
+    """
+    Represents daily stock data.
+    """
+
+    date: str
+    adjusted_close: float
+    ticker: str
+
+
+class MinuteStockData(StockData):
+    """
+    Represents minute stock data.
+    """
+
+    date: str
+    adjusted_close: float
+    ticker: str
+
+
+class HourlyStockData(StockData):
+    """
+    Represents hourly stock data.
+    """
+
+    date: str
+    adjusted_close: float
+    ticker: str
