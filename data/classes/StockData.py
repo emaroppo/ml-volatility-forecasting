@@ -3,7 +3,8 @@ from pydantic import BaseModel
 
 class StockData(BaseModel):
     interval: str
-    start_date: str
+    symbol: str
+    start_timestamp: int
     open: float
     high: float
     low: float
@@ -18,9 +19,7 @@ class DailyStockData(StockData):
     Represents daily stock data.
     """
 
-    date: str
-    adjusted_close: float
-    ticker: str
+    interval: str = "daily"
 
 
 class MinuteStockData(StockData):
@@ -28,9 +27,7 @@ class MinuteStockData(StockData):
     Represents minute stock data.
     """
 
-    date: str
-    adjusted_close: float
-    ticker: str
+    interval: str = "minute"
 
 
 class HourlyStockData(StockData):
@@ -38,6 +35,4 @@ class HourlyStockData(StockData):
     Represents hourly stock data.
     """
 
-    date: str
-    adjusted_close: float
-    ticker: str
+    interval: str = "hourly"
