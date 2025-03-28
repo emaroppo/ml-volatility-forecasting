@@ -4,6 +4,8 @@ import sqlite3
 import json
 from pydantic import BaseModel
 
+from typing import List
+
 DB_INIT = """CREATE TABLE IF NOT EXISTS sectors (
     ID INTEGER PRIMARY KEY AUTOINCREMENT,
     NAME TEXT NOT NULL
@@ -168,6 +170,38 @@ class DBManager(BaseModel):
             (company.symbol, company.name, company.industry_id),
         )
 
+        # Commit changes and close the connection
+        conn.commit()
+        conn.close()
+
+    def insert_price_data(self, data):
+        """
+        Inserts price data into the database.
+        """
+        table = f"{data[0].interval}"
+        # insert many in database
+        # Connect to SQLite database
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        # Insert data into the database
+        for observation in data:
+            cursor.execute(
+                f"""
+                INSERT INTO {table} (DATE, TICKER, OPEN, HIGH, LOW, CLOSE, VOLUME, DIVIDEND, SPLIT)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    observation.start_timestamp,
+                    observation.symbol,
+                    observation.open,
+                    observation.high,
+                    observation.low,
+                    observation.close,
+                    observation.volume,
+                    observation.dividend,
+                    observation.split,
+                ),
+            )
         # Commit changes and close the connection
         conn.commit()
         conn.close()

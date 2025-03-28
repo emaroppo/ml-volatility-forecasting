@@ -6,6 +6,7 @@ import json
 from tqdm import tqdm
 from data.classes.Company import Company
 from data.classes.Industry import Industry
+from data.classes.StockData import DailyStockData, MinuteStockData, HourlyStockData
 from data.db.DBManager import DBManager
 
 
@@ -85,15 +86,45 @@ class DataScraper(BaseModel):
         """
         Fetches weekly data for a given symbol between start_date and end_date.
         """
-        try:
-            tickers = yf.Tickers(" ".join(symbol))
-            print(start_date, end_date)
-            print(tickers)
-            if start_date and end_date:
-                data = tickers.download(start=start_date, end=end_date, interval="1h")
-            else:
-                data = tickers.download("2y", interval="1h")
-            return data
-        except Exception as e:
-            print(f"Error fetching data for {symbol}: {e}")
-            return None
+        tickers = yf.Tickers(" ".join(symbol))
+        print(start_date, end_date)
+        print(tickers)
+        if start_date and end_date:
+            data = tickers.download(start=start_date, end=end_date, interval="1h")
+        else:
+            data = tickers.download("2y", interval="1h")
+
+        data.columns = data.columns.swaplevel(0, 1)
+        data = data.sort_index(axis=1)
+
+        # for each company, create HourlyStockData object
+        hourly_data = list()
+        print(data.head())
+        for ticker in symbol:
+            company_data = data[ticker]
+            # ffill missing values for Open and Close
+            company_data.loc[:, ["Open", "Close"]] = company_data[
+                ["Open", "Close"]
+            ].ffill()
+            # drop rows where Close is NaN
+            company_data = company_data.dropna(subset=["Close"])
+            # create HourlyStockData object
+            for observation in company_data.iterrows():
+                hourly_data.append(
+                    HourlyStockData(
+                        interval="hourly",
+                        symbol=ticker,
+                        start_timestamp=int(observation[0].timestamp()),
+                        open=observation[1]["Open"],
+                        high=observation[1]["High"],
+                        low=observation[1]["Low"],
+                        close=observation[1]["Close"],
+                        volume=observation[1]["Volume"],
+                        dividend=observation[1]["Dividends"],
+                        split=observation[1]["Stock Splits"],
+                    )
+                )
+        # insert data into database
+        db_manager = DBManager()
+        db_manager.insert_price_data(hourly_data)
+        return data
