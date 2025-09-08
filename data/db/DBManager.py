@@ -3,8 +3,9 @@
 import sqlite3
 import json
 from pydantic import BaseModel
+import pandas as pd
 
-from typing import List
+from typing import List, Union
 
 DB_INIT = """CREATE TABLE IF NOT EXISTS sectors (
     ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -134,6 +135,23 @@ class DBManager(BaseModel):
 
         return rows
 
+    def get_all_tickers(self) -> List[str]:
+        """
+        Retrieves all tickers from the companies table.
+        """
+        # Connect to SQLite database
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        # Execute SQL query to retrieve all tickers
+        cursor.execute("SELECT TICKER FROM companies")
+        rows = cursor.fetchall()
+
+        # Close the connection
+        conn.close()
+
+        return [row[0] for row in rows]
+
     def retrieve_industries(self, sector_id: int = None):
         """
         Retrieves all industries from the database.
@@ -155,6 +173,72 @@ class DBManager(BaseModel):
         conn.close()
 
         return rows
+
+    def retrieve_companies(self):
+        """
+        Retrieves all companies from the database.
+        """
+        # Connect to SQLite database
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        # Execute SQL query to retrieve all data from the specified table
+        cursor.execute(f"SELECT * FROM companies")
+        rows = cursor.fetchall()
+
+        # Close the connection
+        conn.close()
+
+        return rows
+
+    def get_daily_stock_data(
+        self, ticker: str, start: Union[int, None] = None, end: Union[int, None] = None
+    ) -> pd.DataFrame:
+        """
+        Retrieves daily stock data for a specific ticker.
+        """
+        query = """
+            SELECT *
+            FROM daily
+            WHERE TICKER = ?
+            ORDER BY DATE
+        """
+
+        if start and end:
+            query = """
+                SELECT *
+                FROM daily
+                WHERE TICKER = ?
+                AND DATE BETWEEN ? AND ?
+                ORDER BY DATE
+            """
+            params = (ticker, start, end)
+        elif start:
+            query = """
+                SELECT *
+                FROM daily
+                WHERE TICKER = ?
+                AND DATE >= ?
+                ORDER BY DATE
+            """
+            params = (ticker, start)
+        elif end:
+            query = """
+                SELECT *
+                FROM daily
+                WHERE TICKER = ?
+                AND DATE <= ?
+                ORDER BY DATE
+            """
+            params = (ticker, end)
+        else:
+            params = (ticker,)
+
+        conn = sqlite3.connect(self.db_path)
+        df = pd.read_sql(query, conn, params=params, parse_dates=["DATE"])
+
+        conn.close()
+        return df
 
     def insert_company(self, company):
         """
@@ -179,16 +263,17 @@ class DBManager(BaseModel):
         Inserts price data into the database.
         """
         table = f"{data[0].interval}"
-        # insert many in database
-        # Connect to SQLite database
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        # Insert data into the database
+
         for observation in data:
             cursor.execute(
                 f"""
-                INSERT INTO {table} (DATE, TICKER, OPEN, HIGH, LOW, CLOSE, VOLUME, DIVIDEND, SPLIT)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO {table} (
+                    DATE, TICKER, OPEN, HIGH, LOW, CLOSE, VOLUME,
+                    DIVIDEND, SPLIT,
+                    ADJ_OPEN, ADJ_CLOSE, ADJ_HIGH, ADJ_LOW
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     observation.start_timestamp,
@@ -200,9 +285,13 @@ class DBManager(BaseModel):
                     observation.volume,
                     observation.dividend,
                     observation.split,
+                    observation.adj_open,
+                    observation.adj_close,
+                    observation.adj_high,
+                    observation.adj_low,
                 ),
             )
-        # Commit changes and close the connection
+
         conn.commit()
         conn.close()
 
