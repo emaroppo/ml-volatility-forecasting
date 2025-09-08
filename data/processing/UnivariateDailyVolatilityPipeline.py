@@ -19,15 +19,15 @@ class UnivariateDailyVolatilityPipeline(DailyVolatilityPipeline):
 
         X_train, y_train = [], []
         for i in range(len(train_data) - 22):
-            X_train.append(processed_data.iloc[i : i + 22].values)
-            y_train.append(processed_data.iloc[i + 22])
+            X_train.append(train_data.iloc[i : i + 22].values)
+            y_train.append(train_data.iloc[i + 22])
 
         if not val_data.empty:
 
             X_val, y_val = [], []
             for i in range(len(val_data) - 22):
-                X_val.append(processed_data.iloc[i : i + 22].values)
-                y_val.append(processed_data.iloc[i + 22])
+                X_val.append(val_data.iloc[i : i + 22].values)
+                y_val.append(val_data.iloc[i + 22])
 
         train_data = {
             "inputs": np.array(X_train),
