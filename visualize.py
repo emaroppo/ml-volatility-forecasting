@@ -167,6 +167,8 @@ def dataset_data():
     tickers = db_manager.get_all_tickers()
     selected_ticker = st.selectbox("Select a Ticker", tickers)
 
+    # set date as log_returns index
+
     start_date = st.date_input("Start Date", datetime(2020, 1, 1), key="dataset_start")
     end_date = st.date_input("End Date", datetime.now(), key="dataset_end")
     start_timestamp = int(datetime.combine(start_date, datetime.min.time()).timestamp())
@@ -174,25 +176,34 @@ def dataset_data():
 
     if st.button("Load Processed Data"):
         st.session_state.pressed_load_data = True
-        df = db_manager.get_daily_stock_data(
+        stock_data = db_manager.get_daily_stock_data(
             selected_ticker,
             start=start_timestamp,
             end=end_timestamp,
         )
-        # convert DATE to date only
-        df["DATE"] = df["DATE"].dt.date
-        # drop ticker column if it exists
-        if "TICKER" in df.columns:
-            df = df.drop(columns=["TICKER"])
-
-        # add log returns column
-        df["LOG_RETURN"] = (df["ADJ_CLOSE"] / df["ADJ_CLOSE"].shift(1)).apply(
-            lambda x: np.log(x) if x > 0 else 0
-        )
+        stock_data = stock_data.sort_values(by="DATE")
+        # compute log returns
+        stock_data["log_return"] = (
+            stock_data["ADJ_CLOSE"] / stock_data["ADJ_CLOSE"].shift(1)
+        ).apply(lambda x: np.log(x))
+        stock_data = stock_data.dropna(subset=["log_return"])
+        log_returns = stock_data["log_return"]
+        # convert DATE to timestamp
+        log_returns.index = stock_data["DATE"]
 
         har_pipeline = UnivariateDailyVolatilityPipeline()
-        processed_data, validation_data = har_pipeline.process_ticker(df["LOG_RETURN"])
+
+        processed_data, validation_data = har_pipeline.process_ticker(
+            log_returns=log_returns
+        )
+        processed_data["inputs"] = processed_data["inputs"].reshape(
+            processed_data["inputs"].shape[0], -1
+        )  # (N, 22, 1) -> (N, 22)
+        validation_data["inputs"] = validation_data["inputs"].reshape(
+            validation_data["inputs"].shape[0], -1
+        )  # (M, 22, 1) -> (M, 22)
         # combine training and validation data for visualization
+        print(processed_data["inputs"].shape, processed_data["targets"].shape)
         processed_data = {
             "inputs": np.concatenate(
                 (processed_data["inputs"], validation_data["inputs"])
@@ -206,7 +217,7 @@ def dataset_data():
         targets_df = pd.DataFrame(processed_data["targets"], columns=["TARGET"])
 
         combined_df = pd.concat([inputs_df, targets_df], axis=1)
-        combined_df["DATE"] = df["DATE"].iloc[-len(combined_df) :].values
+        combined_df["DATE"] = stock_data["DATE"].iloc[-len(combined_df) :].values
 
         st.session_state.df = combined_df
         # Reset sequence index
