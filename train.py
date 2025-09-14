@@ -32,6 +32,7 @@ def train_lstm_model(
     hidden_size,
     num_layers,
     fc1_size,
+    fc2_size,
     output_size,
     batch_size=1024,
     num_epochs=10,
@@ -50,12 +51,28 @@ def train_lstm_model(
         seq_len=22,
         n_features=input_size,
     )
-    # print sample
-    print(len(val_dataset))
 
+    # standardize the datasets based on training set statistics
+    mean, std = (train_dataset.X.mean(), train_dataset.X.std())
+    train_dataset.X = (train_dataset.X - mean) / std
+    val_dataset.X = (val_dataset.X - mean) / std
+
+    # normalize targets based on training set statistics
+    target_mean, target_std = (train_dataset.y.mean(), train_dataset.y.std())
+    train_dataset.y = (train_dataset.y - target_mean) / target_std
+    val_dataset.y = (val_dataset.y - target_mean) / target_std
+
+    train_dataset.X = train_dataset.X.unsqueeze(-1)  # (N, 22, 1)
+    val_dataset.X = val_dataset.X.unsqueeze(-1)  # (M, 22
+    val_dataset.y = val_dataset.y.unsqueeze(-1)  # (M, 1)
+    train_dataset.y = train_dataset.y.unsqueeze(-1)  # (N, 1)
     # Split the dataset into training, validation, and test sets
     test_size = int(len(val_dataset) / 2)
     val_dataset, test_dataset = random_split(val_dataset, [test_size, test_size])
+
+    print(train_dataset.X.shape, train_dataset.y.shape)
+    # print first sample
+    print(train_dataset.X[:2], train_dataset.y[:2])
 
     # Create DataLoader for training, validation, and test sets
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -68,6 +85,7 @@ def train_lstm_model(
         hidden_size=hidden_size,
         num_layers=num_layers,
         fc1_size=fc1_size,
+        fc2_size=fc2_size,
         output_size=output_size,
     )
 
@@ -110,6 +128,7 @@ def train_lstm_model(
 
             # Backward pass and optimization
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
             # Track running loss and MAPE for reporting
@@ -203,12 +222,13 @@ def train_lstm_model(
 
 
 input_size = 1
-hidden_size = 64
+hidden_size = 128
 num_layers = 3
-fc1_size = 64
+fc1_size = 128
+fc2_size = 256
 output_size = 1
-train_dataset_path = "data/processed/univariate_train.pt"
-val_dataset_path = "data/processed/univariate_val.pt"
+train_dataset_path = "data/processed/univariate_train1.pt"
+val_dataset_path = "data/processed/univariate_val1.pt"
 
 # Train the model
 train_lstm_model(
@@ -218,8 +238,9 @@ train_lstm_model(
     hidden_size=hidden_size,
     num_layers=num_layers,
     fc1_size=fc1_size,
+    fc2_size=fc2_size,
     output_size=output_size,
-    batch_size=1024,
-    num_epochs=50,
-    learning_rate=0.001,
+    batch_size=32,
+    num_epochs=10,
+    learning_rate=0.01,
 )
