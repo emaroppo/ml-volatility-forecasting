@@ -222,10 +222,10 @@ def train_lstm_model(
 
 
 input_size = 1
-hidden_size = 128
+hidden_size = 256
 num_layers = 3
-fc1_size = 128
-fc2_size = 256
+fc1_size = 256
+fc2_size = 512
 output_size = 1
 train_dataset_path = "data/processed/univariate_train1.pt"
 val_dataset_path = "data/processed/univariate_val1.pt"
