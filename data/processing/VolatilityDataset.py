@@ -19,11 +19,8 @@ class VolatilityDataset(Dataset):
         return self.X.shape[0]
 
     def __getitem__(self, idx):
-        X = self.X[idx].unsqueeze(0)  # Add batch dimension
-        y = self.y[idx].unsqueeze(0)  # Add batch dimension
-
-        if X.shape == (1, self.seq_len):
-            X = X.transpose(0, 1)
+        X = self.X[idx]  # Add batch dimension
+        y = self.y[idx]
         return X, y
 
     def append_data(self, new_X, new_y):
