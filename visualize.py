@@ -193,30 +193,13 @@ def dataset_data():
 
         har_pipeline = UnivariateDailyVolatilityPipeline()
 
-        processed_data, validation_data = har_pipeline.process_ticker(
-            log_returns=log_returns
-        )
-        processed_data["inputs"] = processed_data["inputs"].reshape(
-            processed_data["inputs"].shape[0], -1
-        )  # (N, 22, 1) -> (N, 22)
-        validation_data["inputs"] = validation_data["inputs"].reshape(
-            validation_data["inputs"].shape[0], -1
-        )  # (M, 22, 1) -> (M, 22)
-        # combine training and validation data for visualization
-        print(processed_data["inputs"].shape, processed_data["targets"].shape)
-        processed_data = {
-            "inputs": np.concatenate(
-                (processed_data["inputs"], validation_data["inputs"])
-            ),
-            "targets": np.concatenate(
-                (processed_data["targets"], validation_data["targets"])
-            ),
-        }
+        processed_data = har_pipeline.process_ticker(log_returns=log_returns)
+        X, y = har_pipeline.create_sequences(processed_data, seq_length=22)
 
-        inputs_df = pd.DataFrame(processed_data["inputs"])
-        targets_df = pd.DataFrame(processed_data["targets"], columns=["TARGET"])
-
-        combined_df = pd.concat([inputs_df, targets_df], axis=1)
+        # Combine X and y into a single DataFrame for easier visualization
+        combined_data = np.hstack((X.reshape(X.shape[0], X.shape[1]), y.reshape(-1, 1)))
+        feature_cols = [f"day_{i+1}" for i in range(X.shape[1])] + ["TARGET"]
+        combined_df = pd.DataFrame(combined_data, columns=feature_cols)
         combined_df["DATE"] = stock_data["DATE"].iloc[-len(combined_df) :].values
 
         st.session_state.df = combined_df
