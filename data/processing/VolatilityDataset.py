@@ -25,6 +25,8 @@ class VolatilityDataset(Dataset):
 
     def append_data(self, new_X, new_y):
         # Append new data to the existing dataset
+        print(f"Appending {new_X.shape[0]} new samples to dataset.")
+        print("Shape before append:", self.X.shape, self.y.shape)
 
         # check if new_X is empty (0,)
         if new_X.shape[0] == 0:

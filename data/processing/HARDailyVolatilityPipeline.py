@@ -29,21 +29,4 @@ class HARDailyVolatilityPipeline(DailyVolatilityPipeline):
         data = pd.Series(log_returns).dropna()
         processed_data = self.compute_weekly_monthly_volatility(data)
         processed_data = processed_data.dropna()
-        X, y = [], []
-        for i in range(len(processed_data) - 22):
-            X.append(processed_data.iloc[i : i + 22].values)
-            y.append(processed_data.iloc[i + 22]["realised_daily_volatility"])
-
-        # split into training and validation sets
-        split_idx = int(0.8 * len(X))
-        processed_data = {
-            "inputs": np.array(X[:split_idx]),
-            "targets": np.array(y[:split_idx]),
-        }
-
-        validation_data = {
-            "inputs": np.array(X[split_idx:]),
-            "targets": np.array(y[split_idx:]),
-        }
-
-        return processed_data, validation_data
+        return processed_data
