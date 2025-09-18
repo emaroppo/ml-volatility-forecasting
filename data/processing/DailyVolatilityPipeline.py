@@ -28,7 +28,7 @@ class DailyVolatilityPipeline(BaseModel):
             y.append(data.iloc[i + seq_length])
         return np.array(X), np.array(y)
 
-    def split_data(self, data, seq_length=22, split_date="2024-01-01"):
+    def split_data(self, data, seq_length=22, split_date="2024-01-01", n_features=1):
         # data before 2024-01-01 for training, after for validation
         split_date = pd.Timestamp(split_date)
         val_data = data[data.index >= split_date]
@@ -39,11 +39,15 @@ class DailyVolatilityPipeline(BaseModel):
 
         train_data = {
             "inputs": np.array(X_train),  # (N, 22, 1)
-            "targets": np.array(y_train).reshape(-1, 1),  # (N, 1)
+            "targets": np.array(y_train).reshape(
+                -1, n_features
+            ),  # (N_Samples, N_Features)
         }
         validation_data = {
             "inputs": np.array(X_val),  # (M, 22, 1)
-            "targets": np.array(y_val).reshape(-1, 1),  # (M, 1)
+            "targets": np.array(y_val).reshape(
+                -1, n_features
+            ),  # (N_Samples, N_Features)
         }
 
         return train_data, validation_data
