@@ -37,8 +37,6 @@ def train_lstm_model(
     batch_size=1024,
     num_epochs=10,
     learning_rate=0.001,
-    validation_split=0.1,
-    test_split=0.1,
 ):
     # Load the dataset from the saved .pt file
     train_dataset = VolatilityDataset(
